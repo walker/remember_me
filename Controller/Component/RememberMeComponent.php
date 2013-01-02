@@ -11,6 +11,9 @@ App::uses('BaseAuthenticate', 'Controller/Component/Auth');
 App::uses('Component', 'Controller');
 class RememberMeComponent extends Component {
 
+	/* Used as User Model */
+	private $userModel = null;
+
 /**
  * Include the neccessary components for RememberMe to function with
  */
@@ -38,7 +41,7 @@ class RememberMeComponent extends Component {
 	* @return false
 	*/
 	private function initializeModel() {
-		if (!isset($this->userModel)) {
+		if (!$this->userModel) {
 			$userModel = $this->AuthSettings['userModel'];
 			if (empty($userModel)) {
 				throw new BadMethodCallException('Please specify what user model to authenticate against');
@@ -92,7 +95,7 @@ class RememberMeComponent extends Component {
 		if ($this->tokenSupports('token_salt')) {
 			$cookieData[$this->settings['token_salt']] = $tokens[$this->settings['token_salt']];
 		}
-		$this->Cookie->write($this->Cookie->name, $cookieData, true, $this->settings['timeout']);
+		$this->Cookie->write($this->settings['cookie_name'], $cookieData, true, $this->settings['timeout']);
 	}
 
 /**
@@ -112,10 +115,10 @@ class RememberMeComponent extends Component {
 	* @return false
 	*/
 	protected function setUserScope() {
-		if ($this->Cookie->read($this->Cookie->name) &&
-				empty($this->Controller->data[$this->Auth->userModel][$this->settings['field_name']]) && $this->tokenSupports('token_field')) {
-			$tokenField = $this->Auth->userModel.'.'.$this->settings['token_field'];
-			$cookieData = $this->Cookie->read($this->Cookie->name);
+		if ($this->Cookie->read($this->settings['cookie_name']) &&
+				empty($this->Controller->data[$this->AuthSettings['userModel']][$this->settings['field_name']]) && $this->tokenSupports('token_field')) {
+			$tokenField = $this->AuthSettings['userModel'].'.'.$this->settings['token_field'];
+			$cookieData = $this->Cookie->read($this->settings['cookie_name']);
 			if (empty($this->Auth->userScope)) {
 				$this->Auth->userScope = array();
 			}
@@ -130,23 +133,25 @@ class RememberMeComponent extends Component {
 	* @return false
 	*/
 	public function checkUser() {
-		if ($this->Cookie->read($this->Cookie->name) && !$this->Session->check('Auth.'.$this->Auth->userModel)) {
-
-			$cookieData = $this->Cookie->read($this->Cookie->name);
-
+		if ($this->Cookie->read($this->settings['cookie_name']) && !$this->Session->check('Auth.'.$this->AuthSettings['userModel'])) {
+			
+			$cookieData = $this->Cookie->read($this->settings['cookie_name']);
+			
 			if ($this->tokenSupports('token_field')) {
 				$userData = $this->checkTokens();
 				if ($userData) {
 					$this->setUserScope();
 				}
-				$user = $this->getUserByTokens($cookieData, true);
+				// TODO: This might not work right now....Check it. How?
+				$user = $this->getUserByTokens($cookieData['User'], true);
 				$this->Auth->login($user);
 			} else {
-				$this->Auth->login($cookieData);
+				$this->Controller->data = array('User'=>$cookieData['User']);
+				$this->Auth->login();
 			}
 		}
-
-		if ($this->Cookie->read($this->Cookie->name) && $this->Session->check('Auth.'.$this->Auth->userModel)) {
+		
+		if ($this->Cookie->read($this->settings['cookie_name']) && $this->Session->check('Auth.'.$this->AuthSettings['userModel'])) {
 			$this->rewriteCookie();
 		}
 	}
@@ -159,7 +164,7 @@ class RememberMeComponent extends Component {
 		if ($this->tokenSupports('token_field')) {
 			$this->initializeModel();
 			$fields = $this->setTokenFields();
-			$cookieData = $this->Cookie->read($this->Cookie->name);
+			$cookieData = $this->Cookie->read($this->settings['cookie_name']);
 			if (is_array($cookieData) && array_values($fields) === array_keys($cookieData)) {
 				$user = $this->getUserByTokens($cookieData);
 				if (!empty($user) && $this->tokenSupports('token_salt') && $this->handleHijack($cookieData, $user)) {
@@ -188,9 +193,9 @@ class RememberMeComponent extends Component {
 			}
 		} else {
 			foreach ($this->setBasicCookieFields() as $keyField) {
-				$cookieFields[] = $this->Controller->data[$this->Auth->userModel][$keyField];
+				$cookieFields[] = $this->Controller->data[$this->AuthSettings['userModel']][$keyField];
 			}
-			$this->Cookie->write($this->Cookie->name, serialize($this->Controller->data), true, $this->settings['timeout']);
+			$this->Cookie->write($this->settings['cookie_name'], $this->Controller->data, true, $this->settings['timeout']);
 		}
 	}
 
@@ -222,8 +227,8 @@ class RememberMeComponent extends Component {
 	* @return false
 	*/
 	public function rewriteCookie() {
-		$cookieData = $this->Cookie->read($this->Cookie->name);
-		$this->Cookie->write($this->Cookie->name, $cookieData, true, $this->settings['timeout']);
+		$cookieData = $this->Cookie->read($this->settings['cookie_name']);
+		$this->Cookie->write($this->settings['cookie_name'], $cookieData, true, $this->settings['timeout']);
 	}
 
 /**

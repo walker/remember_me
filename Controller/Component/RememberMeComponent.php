@@ -20,16 +20,17 @@ class RememberMeComponent extends Component {
 	* @param array $settings overrides default settings for token fieldnames and data fields
 	* @return false
 */
-	function initialize($Controller, $settings = array()) {
+	public function initialize(Controller $controller) {
 		$defaults = array(
 			'timeout' => '+1 month',
 			'field_name' => 'remember_me',
 			'token_field' => 'token',
-			'token_salt' => 'token_salt'
+			'token_salt' => 'token_salt',
+			'cookie_name' => 'remember_me'
 		);
-
-		$this->Controller = $Controller;
-		$this->settings = array_merge($defaults, $settings);
+		
+		$this->Controller = $controller;
+		$this->settings = $defaults;
 	}
 
 /**

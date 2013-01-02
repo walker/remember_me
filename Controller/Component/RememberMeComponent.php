@@ -2,8 +2,8 @@
 /**
  * RememberMe Component - Token driven AutoLogin Component for CakePHP
  *
- * http://www.jotlab.com
- * http://www.github/voidet/remember_me
+ * http://www.github.com/walker/remember_me
+ * (Version for older cakePHP (pre2) from @voidet
  *
  **/
 
